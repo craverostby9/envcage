@@ -1,59 +1,82 @@
-"""Lifecycle hooks — automatically record audit entries for snapshot, diff, and validate operations."""
+"""Post-action hooks that record audit entries and apply redaction before output."""
 
 from __future__ import annotations
 
-from typing import Callable, Any
+import os
+from typing import Dict, Optional
 
 from envcage import audit
+from envcage.redact import redact_snapshot
 
 
 def _default_audit_path() -> str:
-    return audit.DEFAULT_AUDIT_FILE
+    return os.environ.get("ENVCAGE_AUDIT_FILE", ".envcage_audit.jsonl")
 
 
-def after_snapshot(name: str, path: str, audit_path: str = audit.DEFAULT_AUDIT_FILE) -> None:
-    """Record an audit entry after a snapshot is saved."""
-    audit.record("snapshot", {"name": name, "path": path}, audit_path=audit_path)
+def after_snapshot(
+    name: str,
+    snapshot: Dict[str, str],
+    audit_path: Optional[str] = None,
+) -> Dict[str, str]:
+    """Record a snapshot audit entry and return a redacted copy of the snapshot."""
+    path = audit_path or _default_audit_path()
+    audit.record(action="snapshot", details={"name": name}, audit_file=path)
+    return redact_snapshot(snapshot)
 
 
-def after_diff(snapshot_a: str, snapshot_b: str, has_changes: bool, audit_path: str = audit.DEFAULT_AUDIT_FILE) -> None:
-    """Record an audit entry after a diff is performed."""
+def after_diff(
+    snapshot_a: str,
+    snapshot_b: str,
+    changed_count: int,
+    audit_path: Optional[str] = None,
+) -> None:
+    """Record a diff audit entry."""
+    path = audit_path or _default_audit_path()
     audit.record(
-        "diff",
-        {"snapshot_a": snapshot_a, "snapshot_b": snapshot_b, "has_changes": has_changes},
-        audit_path=audit_path,
+        action="diff",
+        details={"from": snapshot_a, "to": snapshot_b, "changed": changed_count},
+        audit_file=path,
     )
 
 
 def after_validate(
-    name: str, passed: bool, missing: list, unexpected: list, audit_path: str = audit.DEFAULT_AUDIT_FILE
+    snapshot_name: str,
+    passed: bool,
+    missing: int,
+    audit_path: Optional[str] = None,
 ) -> None:
-    """Record an audit entry after a validation is run."""
+    """Record a validate audit entry."""
+    path = audit_path or _default_audit_path()
     audit.record(
-        "validate",
-        {
-            "name": name,
-            "passed": passed,
-            "missing_count": len(missing),
-            "unexpected_count": len(unexpected),
-        },
-        audit_path=audit_path,
+        action="validate",
+        details={"snapshot": snapshot_name, "passed": passed, "missing": missing},
+        audit_file=path,
     )
 
 
-def after_merge(sources: list, output: str, conflict_count: int, audit_path: str = audit.DEFAULT_AUDIT_FILE) -> None:
-    """Record an audit entry after snapshots are merged."""
+def after_merge(
+    sources: list,
+    conflicts: int,
+    audit_path: Optional[str] = None,
+) -> None:
+    """Record a merge audit entry."""
+    path = audit_path or _default_audit_path()
     audit.record(
-        "merge",
-        {"sources": sources, "output": output, "conflict_count": conflict_count},
-        audit_path=audit_path,
+        action="merge",
+        details={"sources": sources, "conflicts": conflicts},
+        audit_file=path,
     )
 
 
-def after_export(name: str, format: str, destination: str, audit_path: str = audit.DEFAULT_AUDIT_FILE) -> None:
-    """Record an audit entry after a snapshot is exported."""
+def after_export(
+    snapshot_name: str,
+    fmt: str,
+    audit_path: Optional[str] = None,
+) -> None:
+    """Record an export audit entry."""
+    path = audit_path or _default_audit_path()
     audit.record(
-        "export",
-        {"name": name, "format": format, "destination": destination},
-        audit_path=audit_path,
+        action="export",
+        details={"snapshot": snapshot_name, "format": fmt},
+        audit_file=path,
     )
