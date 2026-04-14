@@ -93,3 +93,12 @@ def test_tag_store_persisted_as_valid_json(tag_file):
     with open(tag_file) as f:
         data = json.load(f)
     assert isinstance(data, dict)
+
+
+def test_find_by_tag_results_are_sorted(tag_file):
+    """Snapshots returned by find_by_tag should be in sorted order."""
+    add_tag("snap_c", "production", tag_file)
+    add_tag("snap_a", "production", tag_file)
+    add_tag("snap_b", "production", tag_file)
+    result = find_by_tag("production", tag_file)
+    assert result == sorted(result)
