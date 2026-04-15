@@ -37,7 +37,15 @@ def merge_snapshots(
 
     Returns:
         MergeResult with merged env and any conflicts detected.
+
+    Raises:
+        ValueError: If an unsupported strategy is provided.
     """
+    if strategy not in ("last", "first"):
+        raise ValueError(
+            f"Unknown merge strategy {strategy!r}. Expected 'last' or 'first'."
+        )
+
     if not snapshots:
         return MergeResult(merged={}, sources=sources or [])
 
@@ -76,7 +84,15 @@ def merge_snapshot_files(
 
     Returns:
         MergeResult with merged env and any conflicts detected.
+
+    Raises:
+        ValueError: If fewer than two paths are provided.
     """
+    if len(paths) < 2:
+        raise ValueError(
+            f"At least two snapshot files are required to merge, got {len(paths)}."
+        )
+
     snapshots = [load(p) for p in paths]
     result = merge_snapshots(snapshots, strategy=strategy, sources=paths)
 
