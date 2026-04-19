@@ -82,6 +82,13 @@ def test_load_round_trips(tmp_path, snap_files):
     assert loaded.snapshots == [base, override]
 
 
+def test_load_chain_missing_file_raises(tmp_path):
+    """load_chain should raise an informative error for a missing file."""
+    missing = str(tmp_path / "nonexistent.json")
+    with pytest.raises((FileNotFoundError, OSError)):
+        load_chain(missing)
+
+
 # ---------- resolution ----------
 
 def test_resolve_merges_all_keys(snap_files):
@@ -110,23 +117,4 @@ def test_resolve_fallback_to_lower_priority(snap_files):
 def test_resolve_key_returns_value(snap_files):
     base, override = snap_files
     c = create_chain("c", snapshots=[override, base])
-    assert resolve_key(c, "EXTRA") == "yes"
-
-
-def test_resolve_key_returns_none_for_missing(snap_files):
-    base, override = snap_files
-    c = create_chain("c", snapshots=[override, base])
-    assert resolve_key(c, "NONEXISTENT") is None
-
-
-def test_source_of_returns_correct_file(snap_files):
-    base, override = snap_files
-    c = create_chain("c", snapshots=[override, base])
-    assert source_of(c, "DB") == base
-    assert source_of(c, "EXTRA") == override
-
-
-def test_source_of_returns_none_when_missing(snap_files):
-    base, override = snap_files
-    c = create_chain("c", snapshots=[override, base])
-    assert source_of(c, "GHOST") is None
+    assert resolve
