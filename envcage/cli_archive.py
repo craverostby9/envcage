@@ -53,6 +53,27 @@ def cmd_archive_list(
         print(f"  {e.snapshot}  archived={e.archived_at}{reason_str}")
 
 
+def cmd_archive_purge(
+    args: argparse.Namespace,
+    archive_dir: Path = _DEFAULT_ARCHIVE_DIR,
+    log_file: Path = _DEFAULT_LOG,
+) -> None:
+    """Remove all archived snapshots and clear the archive log."""
+    entries = list_archived(log_file)
+    if not entries:
+        print("[envcage] no archived snapshots to purge.")
+        return
+    removed = 0
+    for e in entries:
+        path = archive_dir / e.archive_path
+        if path.exists():
+            path.unlink()
+            removed += 1
+    if log_file.exists():
+        log_file.write_text("[]")
+    print(f"[envcage] purged {removed} archived snapshot(s).")
+
+
 def register(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
     p_archive = sub.add_parser("archive", help="Archive a snapshot")
     p_archive.add_argument("snapshot")
@@ -66,3 +87,6 @@ def register(sub: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
 
     p_list = sub.add_parser("archive-list", help="List archived snapshots")
     p_list.set_defaults(func=cmd_archive_list)
+
+    p_purge = sub.add_parser("archive-purge", help="Remove all archived snapshots")
+    p_purge.set_defaults(func=cmd_archive_purge)
